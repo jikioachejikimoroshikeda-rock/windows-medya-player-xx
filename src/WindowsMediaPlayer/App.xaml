@@ -1,0 +1,7 @@
+<Application x:Class="WindowsMediaPlayer.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <SolidColorBrush x:Key="WindowBackground" Color="#101B2B" />
+    <SolidColorBrush x:Key="PanelBackground" Color="#17263A" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#64B9FF" />
+  </Application.Resources>
+</Application>

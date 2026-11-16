@@ -1,0 +1,70 @@
+<Window x:Class="WindowsMediaPlayer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+        Title="Windows Media Player Next" Width="1280" Height="800" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen" Background="#101B2B" Foreground="#F3F6FB">
+  <Window.Resources>
+    <Style TargetType="Button" x:Key="NavButton"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#C5D0DF"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="12,10"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="FontSize" Value="14"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#263B55"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    <Style TargetType="Button" x:Key="ActionButton"><Setter Property="Background" Value="#263B55"/><Setter Property="Foreground" Value="#F3F6FB"/><Setter Property="BorderBrush" Value="#38516E"/><Setter Property="Padding" Value="12,8"/><Setter Property="Margin" Value="3"/><Setter Property="Cursor" Value="Hand"/></Style>
+    <Style TargetType="TextBlock" x:Key="Muted"><Setter Property="Foreground" Value="#9EADC1"/><Setter Property="FontSize" Value="12"/></Style>
+  </Window.Resources>
+  <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="230"/><ColumnDefinition Width="*"/><ColumnDefinition Width="280"/></Grid.ColumnDefinitions>
+    <Border Grid.Column="0" Background="#121F31" BorderBrush="#26374C" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal" Margin="8,8,4,22"><Border Width="38" Height="38" CornerRadius="11" Background="#238BEE"><TextBlock Text="▶" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border><StackPanel Margin="10,2,0,0"><TextBlock Text="Windows Media Player" FontWeight="SemiBold"/><TextBlock Text="Next" Foreground="#9EADC1" FontSize="12"/></StackPanel></StackPanel>
+          <TextBlock Text="BIBLIOTECA" Foreground="#8091A8" FontSize="10" Margin="12,0,0,7"/>
+          <Button Style="{StaticResource NavButton}" Content="⌂   Inicio" Tag="Inicio" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="♫   Música" Tag="Música" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="▣   Vídeos" Tag="Vídeos" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="◉   Podcasts" Tag="Podcasts" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="▤   Audiolibros" Tag="Audiolibros" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="◉   Radio" Tag="Radio" Click="Navigate_Click"/>
+          <Button Style="{StaticResource NavButton}" Content="☷   Listas de reproducción" Tag="Listas" Click="Navigate_Click"/>
+          <TextBlock Text="VER POR" Foreground="#8091A8" FontSize="10" Margin="12,22,0,7"/>
+          <ComboBox x:Name="GroupByBox" Margin="6,0,6,0" SelectedIndex="0" Height="30" SelectionChanged="GroupBy_Changed"><ComboBoxItem Content="Artista"/><ComboBoxItem Content="Álbum"/><ComboBoxItem Content="Género"/><ComboBoxItem Content="Año"/><ComboBoxItem Content="BPM"/><ComboBoxItem Content="Estado de ánimo"/></ComboBox>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" Margin="8"><TextBlock Text="Reproductor nativo para Windows" Foreground="#8091A8" FontSize="11"/><TextBlock Text="Audio · Vídeo · Imágenes" Foreground="#657991" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Column="1" Margin="24,18,20,16">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <DockPanel Grid.Row="0" Margin="0,0,0,16">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Style="{StaticResource ActionButton}" Content="＋ Agregar archivos" Click="AddFiles_Click"/><Button Style="{StaticResource ActionButton}" Content="▧ Ver imágenes" Click="OpenImages_Click"/><Button Style="{StaticResource ActionButton}" Content="↗ Radio URL" Click="OpenRadio_Click"/></StackPanel>
+        <TextBox x:Name="SearchBox" Width="300" Height="34" VerticalContentAlignment="Center" Padding="10,0" Background="#1B2C41" Foreground="White" BorderBrush="#30455F" Text="Buscar en tu biblioteca…" TextChanged="Search_Changed"/>
+      </DockPanel>
+      <DockPanel Grid.Row="1" Margin="0,0,0,12"><TextBlock x:Name="PageTitle" Text="Inicio" FontSize="24" FontWeight="SemiBold"/><TextBlock x:Name="LibraryCount" Text="  ·  0 elementos" Foreground="#91A2B8" VerticalAlignment="Bottom" Margin="8,0,0,4"/></DockPanel>
+      <Grid Grid.Row="2" x:Name="ContentArea">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#0B1522" CornerRadius="12" BorderBrush="#26374C" BorderThickness="1" ClipToBounds="True">
+          <Grid>
+            <vlc:VideoView x:Name="VideoSurface" Visibility="Visible"/>
+            <Image x:Name="ImageSurface" Visibility="Collapsed" Stretch="Uniform" Margin="16"/>
+            <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock Text="♫" FontSize="48" Foreground="#64B9FF" HorizontalAlignment="Center"/><TextBlock Text="Tu biblioteca empieza aquí" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,4"/><TextBlock Text="Agrega música o vídeo, abre imágenes o reproduce una emisora." Foreground="#9EADC1" HorizontalAlignment="Center"/></StackPanel>
+            <Border VerticalAlignment="Bottom" Background="#B20B1522" Padding="10" IsHitTestVisible="False"><TextBlock x:Name="CurrentMediaLabel" Text="Listo para reproducir" Foreground="#DCE6F2"/></Border>
+          </Grid>
+        </Border>
+        <Border Grid.Row="1" Background="#17263A" CornerRadius="9" Margin="0,12,0,0" Padding="12">
+          <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <DockPanel Grid.Row="0"><StackPanel DockPanel.Dock="Left" Width="190"><TextBlock x:Name="NowTitle" Text="Selecciona un archivo" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock x:Name="NowSubtitle" Text="Audio y vídeo local" Style="{StaticResource Muted}" Margin="0,3,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Center"><Button Style="{StaticResource ActionButton}" Content="⤨" ToolTip="Aleatorio" Click="Shuffle_Click"/><Button Style="{StaticResource ActionButton}" Content="|◀" ToolTip="Anterior" Click="Previous_Click"/><Button x:Name="PlayButton" Style="{StaticResource ActionButton}" Content="▶" FontSize="17" Padding="14,7" Click="PlayPause_Click"/><Button Style="{StaticResource ActionButton}" Content="▶|" ToolTip="Siguiente" Click="Next_Click"/><Button Style="{StaticResource ActionButton}" Content="⟳" ToolTip="Repetir" Click="Repeat_Click"/></StackPanel><TextBlock x:Name="TimeLabel" DockPanel.Dock="Right" Text="0:00 / 0:00" Foreground="#B8C6D8" VerticalAlignment="Center"/></DockPanel>
+            <Slider x:Name="ProgressSlider" Grid.Row="1" Minimum="0" Maximum="100" Value="0" Margin="4,8,4,0" ValueChanged="Progress_Changed"/>
+          </Grid>
+        </Border>
+      </Grid>
+      <TextBlock Grid.Row="3" Text="Los formatos dependen de los códecs compatibles con VLC. No se admiten medios protegidos con DRM." Foreground="#73849A" FontSize="10" Margin="2,9,0,0"/>
+    </Grid>
+
+    <Border Grid.Column="2" Background="#131F30" BorderBrush="#26374C" BorderThickness="1,0,0,0" Padding="12">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top"><TextBlock Text="Biblioteca y cola" FontSize="16" FontWeight="SemiBold" Margin="4,7,0,3"/><TextBlock Text="Selecciona un elemento para reproducir" Foreground="#899BB1" FontSize="11" Margin="4,0,0,12"/></StackPanel>
+        <ListBox x:Name="MediaList" Background="Transparent" BorderThickness="0" Foreground="#E5ECF5" SelectionChanged="MediaList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate><DataTemplate><Border Padding="8" Margin="0,2" Background="#1A2A3F" CornerRadius="7"><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Description}" Foreground="#91A2B8" FontSize="11" Margin="0,3,0,0"/></StackPanel></Border></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock DockPanel.Dock="Bottom" Text="Añade archivos locales con «Agregar archivos»." Foreground="#71839A" FontSize="10" TextWrapping="Wrap" Margin="4,10,4,4"/>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>
