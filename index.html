@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101c2c">
+  <title>Windows Media Player — Next</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="window">
+    <aside class="sidebar">
+      <a class="brand" href="#inicio" aria-label="Windows Media Player, Inicio">
+        <span class="brand-icon"><i></i></span>
+        <span><strong>Windows Media Player</strong><small>Next</small></span>
+      </a>
+      <nav class="primary-nav" aria-label="Biblioteca">
+        <button class="nav-link selected" data-page="Inicio"><span class="nav-symbol">⌂</span>Inicio</button>
+        <button class="nav-link" data-page="Música"><span class="nav-symbol">♫</span>Música</button>
+        <button class="nav-link" data-page="Vídeos"><span class="nav-symbol">▣</span>Vídeos</button>
+        <button class="nav-link" data-page="Podcasts"><span class="nav-symbol">◉</span>Podcasts</button>
+        <button class="nav-link" data-page="Audiolibros"><span class="nav-symbol">▤</span>Audiolibros</button>
+        <button class="nav-link" data-page="Radio"><span class="nav-symbol">◉</span>Radio</button>
+        <button class="nav-link" data-page="Listas de reproducción"><span class="nav-symbol">☷</span>Listas de reproducción</button>
+      </nav>
+
+      <section class="browse" aria-labelledby="browse-title">
+        <h2 id="browse-title">Ver por</h2>
+        <button class="browse-link active" data-view="Artista">Artista</button>
+        <button class="browse-link" data-view="Álbum">Álbum</button>
+        <button class="browse-link" data-view="Género">Género</button>
+        <button class="browse-link" data-view="Año">Año</button>
+        <button class="browse-link" data-view="BPM">BPM</button>
+        <button class="browse-link" data-view="Estado de ánimo">Estado de ánimo</button>
+      </section>
+
+      <section class="recent">
+        <h2>Recientes</h2>
+        <button class="recent-item"><span class="cover cover-sun"></span><span><strong>Lo mejor de hoy</strong><small>Lista de reproducción</small></span></button>
+        <button class="recent-item"><span class="cover cover-film"></span><span><strong>Películas</strong><small>Vídeo</small></span></button>
+        <button class="recent-item"><span class="cover cover-blue"></span><span><strong>Favoritos</strong><small>Lista de reproducción</small></span></button>
+      </section>
+      <div class="sidebar-foot">Tu música, a tu manera.</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar música, vídeos y más…" aria-label="Buscar en la biblioteca"></label>
+        <div class="window-actions"><button class="round-button" aria-label="Perfil">♙</button><button class="round-button" aria-label="Configuración">⚙</button><div class="window-controls"><button aria-label="Minimizar">—</button><button aria-label="Maximizar">□</button><button aria-label="Cerrar">×</button></div></div>
+      </header>
+
+      <div class="workspace">
+        <section class="center-column">
+          <div class="page-heading"><div><p class="eyebrow">TU BIBLIOTECA</p><h1 id="page-title">Inicio</h1></div><button class="add-button" id="add-music">＋ <span>Agregar música</span></button><input id="file-picker" type="file" accept="audio/*,video/*" multiple hidden></div>
+          <div class="browse-toolbar"><span>Explorar música</span><div class="view-picker"><label for="view-select">Ver por</label><select id="view-select" aria-label="Agrupar biblioteca por"><option>Artista</option><option>Álbum</option><option>Género</option><option>Año</option><option>BPM</option><option>Estado de ánimo</option></select></div></div>
+
+          <div class="hero-art" aria-label="Paisaje de montaña al atardecer">
+            <div class="hero-sky"></div><div class="mountain mountain-back"></div><div class="mountain mountain-front"></div><div class="lake"></div>
+            <div class="album-typography"><span>A  H I G H E R  P L A C E</span><small>S O U N D S C A P E</small></div>
+          </div>
+
+          <section class="now-playing-info"><div><p class="eyebrow">REPRODUCIENDO AHORA</p><h2 id="track-title">A Brighter Day</h2><p id="track-artist">Soundscape <span>·</span> <span id="track-album">A Higher Place</span></p></div><div class="track-actions"><button id="favorite" class="text-icon" aria-label="Añadir a favoritos">♡</button><button class="text-icon" aria-label="Más opciones">•••</button></div></section>
+          <div class="seek-row"><span id="elapsed">1:42</span><input id="seek" type="range" min="0" max="245" value="102" aria-label="Posición de reproducción"><span id="duration">4:05</span></div>
+          <div class="player-controls"><button class="plain-control" id="shuffle" aria-label="Reproducción aleatoria">⤨</button><button class="plain-control" id="previous" aria-label="Pista anterior">◀|</button><button class="play-button" id="play" aria-label="Pausar">Ⅱ</button><button class="plain-control" id="next" aria-label="Pista siguiente">|▶</button><button class="plain-control" id="repeat" aria-label="Repetir">⟳</button></div>
+          <audio id="audio" preload="metadata"></audio>
+        </section>
+
+        <aside class="queue-panel">
+          <div class="tabs" role="tablist"><button class="tab active" role="tab" data-tab="Lista">Lista</button><button class="tab" role="tab" data-tab="Letras">Letras</button><button class="tab" role="tab" data-tab="Información">Información</button></div>
+          <div id="tab-content"><div class="album-heading"><h2>A Higher Place</h2><span>Soundscape · 2024</span></div>
+            <div class="track-list" id="track-list">
+              <button class="track selected" data-index="0"><span class="track-number">▮</span><span class="track-details"><strong>A Brighter Day</strong><small>Soundscape</small></span><time>4:05</time></button>
+              <button class="track" data-index="1"><span class="track-number">2</span><span class="track-details"><strong>Lost in the Light</strong><small>Soundscape</small></span><time>3:28</time></button>
+              <button class="track" data-index="2"><span class="track-number">3</span><span class="track-details"><strong>Better Together</strong><small>Cora Vane</small></span><time>4:12</time></button>
+              <button class="track" data-index="3"><span class="track-number">4</span><span class="track-details"><strong>Skyline</strong><small>Mira Sol</small></span><time>3:56</time></button>
+              <button class="track" data-index="4"><span class="track-number">5</span><span class="track-details"><strong>Moments</strong><small>Eli North</small></span><time>4:20</time></button>
+              <button class="track" data-index="5"><span class="track-number">6</span><span class="track-details"><strong>Into the Blue</strong><small>Tidal Echo</small></span><time>3:48</time></button>
+              <button class="track" data-index="6"><span class="track-number">7</span><span class="track-details"><strong>Home Again</strong><small>The Bay</small></span><time>5:01</time></button>
+              <button class="track" data-index="7"><span class="track-number">8</span><span class="track-details"><strong>A Higher Place</strong><small>Soundscape</small></span><time>4:33</time></button>
+            </div>
+            <div class="up-next"><div class="up-next-heading"><span>Siguiente en la reproducción</span><button aria-label="Contraer siguiente">⌃</button></div>
+              <div class="up-next-item"><span class="tiny-cover cover-ocean"></span><span><strong>Ocean Mind</strong><small>Luna Fields</small></span><time>3:17</time></div>
+              <div class="up-next-item"><span class="tiny-cover cover-purple"></span><span><strong>Electric Hearts</strong><small>The Motion</small></span><time>3:45</time></div>
+              <div class="up-next-item"><span class="tiny-cover cover-mountain"></span><span><strong>New Horizons</strong><small>Skyward</small></span><time>4:08</time></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="promo"><span class="promo-logo"><i></i></span><div><strong>Más música. Más momentos.</strong><small>Descubre, reproduce y disfruta de todo tu contenido en un solo lugar.</small></div><button>▣ <span>Explorar más en Microsoft Store</span></button></footer>
+    </main>
+  </div>
+  <footer class="desktop-footer"><span><b class="windows-mark">⊞</b> La música sigue con nosotros.</span><span>Windows Media Player Next<small>Una nueva forma de vivir lo que te mueve.</small></span></footer>
+  <script src="script.js"></script>
+</body>
+</html>
