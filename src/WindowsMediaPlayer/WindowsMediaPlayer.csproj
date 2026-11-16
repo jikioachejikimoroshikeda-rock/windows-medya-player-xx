@@ -13,5 +13,6 @@
   <ItemGroup>
     <PackageReference Include="LibVLCSharp.WPF" Version="3.8.0" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 </Project>

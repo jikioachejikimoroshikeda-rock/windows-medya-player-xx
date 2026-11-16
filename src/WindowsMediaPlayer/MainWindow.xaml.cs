@@ -7,21 +7,27 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using TagLib;
 
 namespace WindowsMediaPlayer
 {
     public partial class MainWindow : Window
     {
         private readonly ObservableCollection<LibraryItem> _items = new ObservableCollection<LibraryItem>();
+        private ICollectionView _libraryView;
         private LibVLC _libVlc;
         private MediaPlayer _player;
         private Media _currentMedia;
         private readonly DispatcherTimer _timer;
         private bool _changingProgress;
         private bool _repeat;
+        private bool _shuffle;
         private int _imageIndex = -1;
+        private string _currentPage = "Inicio";
+        private string _searchText = "";
 
         public MainWindow()
         {
@@ -30,43 +36,92 @@ namespace WindowsMediaPlayer
             _libVlc = new LibVLC();
             _player = new MediaPlayer(_libVlc);
             VideoSurface.MediaPlayer = _player;
-            MediaList.ItemsSource = _items;
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _libraryView = CollectionViewSource.GetDefaultView(_items);
+            _libraryView.Filter = FilterLibraryItem;
+            MediaList.ItemsSource = _libraryView;
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             _timer.Tick += Timer_Tick;
             _timer.Start();
             _player.EndReached += Player_EndReached;
             UpdateCount();
         }
 
+        private bool FilterLibraryItem(object value)
+        {
+            var item = value as LibraryItem;
+            if (item == null) return false;
+            var page = _currentPage;
+            if (page == "Música" && item.Kind != "Audio") return false;
+            if (page == "Vídeos" && item.Kind != "Vídeo") return false;
+            if (page == "Podcasts" && item.Kind != "Podcast") return false;
+            if (page == "Audiolibros" && item.Kind != "Audiolibro") return false;
+            if (page == "Radio" && item.Kind != "Radio") return false;
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                var searchable = string.Join(" ", item.Title, item.Artist, item.Album, item.Genre, item.Description, item.Year.ToString());
+                if (searchable.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) < 0) return false;
+            }
+            return true;
+        }
+
         private void AddFiles_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog
             {
-                Title = "Agregar audio y vídeo",
-                Filter = "Medios compatibles|*.mp3;*.wav;*.flac;*.aac;*.m4a;*.ogg;*.opus;*.wma;*.aiff;*.mp4;*.mkv;*.avi;*.mov;*.wmv;*.webm;*.mpeg;*.mpg;*.ts;*.m4v|Todos los archivos|*.*",
+                Title = "Agregar archivos multimedia",
+                Filter = "Archivos multimedia|*.mp3;*.wav;*.flac;*.aac;*.m4a;*.ogg;*.opus;*.wma;*.aiff;*.mp4;*.mkv;*.avi;*.mov;*.wmv;*.webm;*.mpeg;*.mpg;*.ts;*.m4v;*.flv;*.ogv|Todos los archivos|*.*",
                 Multiselect = true
             };
             if (dialog.ShowDialog(this) != true) return;
+            var firstNewIndex = _items.Count;
             foreach (var path in dialog.FileNames) AddMedia(path);
-            if (MediaList.SelectedIndex < 0 && _items.Count > 0) MediaList.SelectedIndex = _items.Count - dialog.FileNames.Length;
+            RefreshLibrary();
+            if (firstNewIndex < _items.Count) SelectAndPlay(_items[firstNewIndex]);
         }
 
         private void AddMedia(string path)
         {
-            var ext = Path.GetExtension(path).ToLowerInvariant();
-            var video = ".mp4 .mkv .avi .mov .wmv .webm .mpeg .mpg .ts .m4v .flv .ogv".Split(' ').Contains(ext);
-            var kind = video ? "Vídeo" : "Audio";
-            _items.Add(new LibraryItem { Title = Path.GetFileNameWithoutExtension(path), Path = path, Kind = kind, Description = kind + " · " + Path.GetExtension(path).TrimStart('.').ToUpperInvariant() });
-            UpdateCount();
+            var extension = System.IO.Path.GetExtension(path).ToLowerInvariant();
+            var isVideo = ".mp4 .mkv .avi .mov .wmv .webm .mpeg .mpg .ts .m4v .flv .ogv".Split(' ').Contains(extension);
+            var item = new LibraryItem
+            {
+                Title = System.IO.Path.GetFileNameWithoutExtension(path), Path = path,
+                Kind = isVideo ? "Vídeo" : "Audio", Description = isVideo ? "Vídeo" : "Audio",
+                Artist = "Artista desconocido", Album = "Álbum desconocido", Genre = "Sin género", Year = 0
+            };
+            if (!isVideo) ReadAudioTags(item);
+            item.Description = isVideo ? "Vídeo · " + extension.TrimStart('.').ToUpperInvariant() : item.Artist + " · " + item.Album;
+            if (!_items.Any(existing => string.Equals(existing.Path, path, StringComparison.OrdinalIgnoreCase))) _items.Add(item);
+        }
+
+        private static void ReadAudioTags(LibraryItem item)
+        {
+            try
+            {
+                using (var file = TagLib.File.Create(item.Path))
+                {
+                    var tag = file.Tag;
+                    if (!string.IsNullOrWhiteSpace(tag.Title)) item.Title = tag.Title;
+                    if (tag.Performers != null && tag.Performers.Length > 0) item.Artist = tag.Performers[0];
+                    if (!string.IsNullOrWhiteSpace(tag.Album)) item.Album = tag.Album;
+                    if (!string.IsNullOrWhiteSpace(tag.FirstGenre)) item.Genre = tag.FirstGenre;
+                    item.Year = (int)tag.Year;
+                    item.Bpm = (int)tag.BeatsPerMinute;
+                }
+            }
+            catch (Exception) { /* Some formats have no readable tags; keep the file in the library. */ }
         }
 
         private void OpenImages_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFileDialog { Title = "Abrir imágenes", Filter = "Imágenes|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff;*.webp|Todos los archivos|*.*", Multiselect = true };
+            var dialog = new OpenFileDialog { Title = "Abrir imágenes", Filter = "Imágenes compatibles|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tif;*.tiff|Todos los archivos|*.*", Multiselect = true };
             if (dialog.ShowDialog(this) != true) return;
             foreach (var path in dialog.FileNames)
-                _items.Add(new LibraryItem { Title = Path.GetFileNameWithoutExtension(path), Path = path, Kind = "Imagen", Description = "Imagen · " + Path.GetExtension(path).TrimStart('.').ToUpperInvariant() });
-            UpdateCount();
+            {
+                if (!_items.Any(item => string.Equals(item.Path, path, StringComparison.OrdinalIgnoreCase)))
+                    _items.Add(new LibraryItem { Title = System.IO.Path.GetFileNameWithoutExtension(path), Path = path, Kind = "Imagen", Description = "Imagen · " + System.IO.Path.GetExtension(path).TrimStart('.').ToUpperInvariant() });
+            }
+            RefreshLibrary();
             ShowImage(dialog.FileNames[0]);
         }
 
@@ -78,9 +133,10 @@ namespace WindowsMediaPlayer
                 var image = new BitmapImage();
                 image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.UriSource = new Uri(path); image.EndInit(); image.Freeze();
                 ImageSurface.Source = image; ImageSurface.Visibility = Visibility.Visible; VideoSurface.Visibility = Visibility.Collapsed; EmptyState.Visibility = Visibility.Collapsed;
-                CurrentMediaLabel.Text = Path.GetFileName(path) + "  ·  Imagen";
-                NowTitle.Text = Path.GetFileNameWithoutExtension(path); NowSubtitle.Text = "Visor de imágenes";
-                _imageIndex = _items.Where(x => x.Kind == "Imagen").ToList().FindIndex(x => x.Path == path);
+                CurrentMediaLabel.Text = System.IO.Path.GetFileName(path) + " · Imagen";
+                NowTitle.Text = System.IO.Path.GetFileNameWithoutExtension(path); NowSubtitle.Text = "Visor de imágenes · anterior/siguiente";
+                _imageIndex = _items.Where(item => item.Kind == "Imagen").ToList().FindIndex(item => item.Path == path);
+                PlayButton.Content = "▶";
             }
             catch (Exception ex) { MessageBox.Show(this, "No se pudo abrir la imagen: " + ex.Message, "Visor de imágenes", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
@@ -93,12 +149,19 @@ namespace WindowsMediaPlayer
             {
                 ImageSurface.Visibility = Visibility.Collapsed; VideoSurface.Visibility = Visibility.Visible; EmptyState.Visibility = Visibility.Collapsed;
                 _currentMedia?.Dispose();
-                _currentMedia = new Media(_libVlc, item.Path, FromType.FromPath);
+                var from = Uri.TryCreate(item.Path, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == "rtsp") ? FromType.FromLocation : FromType.FromPath;
+                _currentMedia = new Media(_libVlc, item.Path, from);
                 _player.Play(_currentMedia);
                 CurrentMediaLabel.Text = item.Title; NowTitle.Text = item.Title; NowSubtitle.Text = item.Description;
                 PlayButton.Content = "Ⅱ";
             }
             catch (Exception ex) { MessageBox.Show(this, "No se pudo reproducir el archivo: " + ex.Message, "Reproducción", MessageBoxButton.OK, MessageBoxImage.Error); }
+        }
+
+        private void SelectAndPlay(LibraryItem item)
+        {
+            MediaList.SelectedItem = item;
+            PlayItem(item);
         }
 
         private void PlayPause_Click(object sender, RoutedEventArgs e)
@@ -117,65 +180,81 @@ namespace WindowsMediaPlayer
         private void Navigate_Click(object sender, RoutedEventArgs e)
         {
             if (!(sender is Button button)) return;
-            var page = Convert.ToString(button.Tag);
-            PageTitle.Text = page;
-            string kind = page == "Música" ? "Audio" : page == "Vídeos" ? "Vídeo" : page == "Radio" ? "Radio" : page == "Audiolibros" ? "Audiolibro" : page == "Podcasts" ? "Podcast" : null;
-            MediaList.ItemsSource = string.IsNullOrEmpty(kind) ? _items : new ObservableCollection<LibraryItem>(_items.Where(x => x.Kind == kind));
-            if (page == "Radio") CurrentMediaLabel.Text = "Pulsa «Radio URL» para abrir una emisora o stream.";
+            _currentPage = Convert.ToString(button.Tag);
+            PageTitle.Text = _currentPage;
+            RefreshLibrary();
+            if (_currentPage == "Radio") CurrentMediaLabel.Text = "Agrega una emisora con «Radio URL».";
         }
 
         private void GroupBy_Changed(object sender, SelectionChangedEventArgs e)
         {
-            if (PageTitle != null && GroupByBox.SelectedItem is ComboBoxItem item) PageTitle.Text = "Música · " + item.Content;
+            if (PageTitle == null || !(GroupByBox.SelectedItem is ComboBoxItem item)) return;
+            PageTitle.Text = _currentPage == "Inicio" ? "Música · " + item.Content : _currentPage + " · " + item.Content;
+            var property = Convert.ToString(item.Content);
+            string propertyName = property == "Artista" ? "Artist" : property == "Álbum" ? "Album" : property == "Género" ? "Genre" : property == "Año" ? "Year" : property == "BPM" ? "Bpm" : "Mood";
+            _libraryView.GroupDescriptions.Clear();
+            _libraryView.GroupDescriptions.Add(new PropertyGroupDescription(propertyName));
+            _libraryView.Refresh();
         }
 
         private void Search_Changed(object sender, TextChangedEventArgs e)
         {
-            if (MediaList == null || SearchBox.Text == "Buscar en tu biblioteca…") return;
-            var query = SearchBox.Text.Trim();
-            MediaList.ItemsSource = new ObservableCollection<LibraryItem>(_items.Where(x => string.IsNullOrEmpty(query) || x.Title.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 || x.Description.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0));
+            if (SearchBox == null) return;
+            _searchText = SearchBox.Text == "Buscar en tu biblioteca…" ? "" : SearchBox.Text.Trim();
+            RefreshLibrary();
+        }
+
+        private void RefreshLibrary()
+        {
+            _libraryView?.Refresh();
+            UpdateCount();
         }
 
         private void OpenRadio_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new RadioUrlDialog { Owner = this };
             if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.StreamUrl)) return;
-            try
-            {
-                var media = new LibraryItem { Title = dialog.StreamUrl, Path = dialog.StreamUrl, Kind = "Radio", Description = "Radio · Stream de red" };
-                _items.Add(media); UpdateCount(); MediaList.ItemsSource = _items; MediaList.SelectedItem = media;
-                _currentMedia?.Dispose(); _currentMedia = new Media(_libVlc, media.Path, FromType.FromLocation); _player.Play(_currentMedia);
-                CurrentMediaLabel.Text = "Radio en directo"; NowTitle.Text = "Radio"; NowSubtitle.Text = media.Path; VideoSurface.Visibility = Visibility.Visible; EmptyState.Visibility = Visibility.Collapsed;
-            }
-            catch (Exception ex) { MessageBox.Show(this, "No se pudo abrir el stream: " + ex.Message, "Radio", MessageBoxButton.OK, MessageBoxImage.Error); }
+            var item = new LibraryItem { Title = dialog.StreamUrl, Path = dialog.StreamUrl, Kind = "Radio", Description = "Radio · Stream de red" };
+            _items.Add(item); _currentPage = "Radio"; PageTitle.Text = "Radio"; RefreshLibrary();
+            MediaList.SelectedItem = item;
+            PlayItem(item);
         }
 
         private void Previous_Click(object sender, RoutedEventArgs e)
         {
             if (ImageSurface.Visibility == Visibility.Visible) { ChangeImage(-1); return; }
-            if (MediaList.Items.Count == 0) return;
-            MediaList.SelectedIndex = (MediaList.SelectedIndex - 1 + MediaList.Items.Count) % MediaList.Items.Count;
+            MoveSelection(-1);
         }
         private void Next_Click(object sender, RoutedEventArgs e)
         {
             if (ImageSurface.Visibility == Visibility.Visible) { ChangeImage(1); return; }
+            MoveSelection(1);
+        }
+        private void MoveSelection(int direction)
+        {
             if (MediaList.Items.Count == 0) return;
-            MediaList.SelectedIndex = (MediaList.SelectedIndex + 1) % MediaList.Items.Count;
+            var index = MediaList.SelectedIndex;
+            if (_shuffle && direction > 0) index = new Random().Next(MediaList.Items.Count);
+            else index = (index + direction + MediaList.Items.Count) % MediaList.Items.Count;
+            MediaList.SelectedIndex = index;
+            MediaList.ScrollIntoView(MediaList.SelectedItem);
         }
         private void ChangeImage(int step)
         {
-            var images = _items.Where(x => x.Kind == "Imagen").ToList();
+            var images = _items.Where(item => item.Kind == "Imagen").ToList();
             if (images.Count == 0) return;
             _imageIndex = (_imageIndex + step + images.Count) % images.Count;
             ShowImage(images[_imageIndex].Path);
         }
         private void Shuffle_Click(object sender, RoutedEventArgs e)
         {
-            if (MediaList.Items.Count > 0) MediaList.SelectedIndex = new Random().Next(MediaList.Items.Count);
+            _shuffle = !_shuffle;
+            ((Button)sender).Foreground = _shuffle ? System.Windows.Media.Brushes.DeepSkyBlue : System.Windows.Media.Brushes.White;
         }
         private void Repeat_Click(object sender, RoutedEventArgs e)
         {
-            _repeat = !_repeat; ((Button)sender).Foreground = _repeat ? System.Windows.Media.Brushes.DeepSkyBlue : System.Windows.Media.Brushes.White;
+            _repeat = !_repeat;
+            ((Button)sender).Foreground = _repeat ? System.Windows.Media.Brushes.DeepSkyBlue : System.Windows.Media.Brushes.White;
         }
         private void Player_EndReached(object sender, EventArgs e)
         {
@@ -215,5 +294,11 @@ namespace WindowsMediaPlayer
         public string Path { get; set; }
         public string Kind { get; set; }
         public string Description { get; set; }
+        public string Artist { get; set; }
+        public string Album { get; set; }
+        public string Genre { get; set; }
+        public string Mood { get; set; } = "Sin clasificar";
+        public int Year { get; set; }
+        public int Bpm { get; set; }
     }
 }
